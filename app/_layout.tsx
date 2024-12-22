@@ -1,39 +1,44 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
+import { ImageBackground, StatusBar, Text, View } from "react-native";
+import { s } from "./Layout.style";
+import hotBackground from "../assets/hot.png";
+import coldBackground from "../assets/cold.png";
+import { InputTemperature } from "../components/InputTemperature/InputTemperature";
+import { TemperatureDisplay } from "../components/TemperatureDisplay/TemperatureDisplay";
+import {DEFAULT_TEMPERATURE,DEFAULT_UNIT, UNITS} from "./constant"
+import {getOppossitUnit,convertTemperatureTo, isIceTemperature} from "../services/temperature-service"
+import {ButtonConvert} from "../components/ButtonConvert/ButtonConvert"
+import { useEffect, useState } from "react";
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
+  const [inputValue, setInputValue]=useState(DEFAULT_TEMPERATURE)
+  const [currentUnit, setCurrentUnit]=useState(DEFAULT_UNIT)
+  const [currentBackground, setCurrentBackground]= useState()
+const oppositeUnit = getOppossitUnit(currentUnit)
+useEffect(()=>{
+  const temperatureAsFloat = Number.parseFloat(inputValue)
+  if(!isNaN(temperatureAsFloat)){
+    const isColdBackground=isIceTemperature(inputValue,currentUnit)
+    setCurrentBackground(isColdBackground?coldBackground:hotBackground)
   }
-
+},[inputValue])
+function getConvertedTemperature(){
+  const valueAsFloat = Number.parseFloat(inputValue)
+  return isNaN(valueAsFloat) ? "" :convertTemperatureTo(oppositeUnit,inputValue).toFixed(1)
+}
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <ImageBackground source={currentBackground} style={s.container}>
+      <StatusBar
+        animated={true}
+        backgroundColor="transparent"
+        barStyle={"dark-content"}
+        translucent={true}
+      />
+      <View style={s.workspace}>
+        <TemperatureDisplay value={getConvertedTemperature()} unit={oppositeUnit}/>
+        <InputTemperature onChangeText={setInputValue} defaultValue={DEFAULT_TEMPERATURE} unit={currentUnit} />
+        <ButtonConvert onPress={()=>{
+          setCurrentUnit(oppositeUnit)
+        }} unit={currentUnit} />
+      </View>
+    </ImageBackground>
   );
 }
